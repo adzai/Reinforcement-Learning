@@ -2,6 +2,14 @@ import random
 from copy import deepcopy
 from enum import Enum
 
+
+from itertools import product
+
+obs_space = {}
+for i, arr in enumerate(product([0, 1], repeat=11)):
+    obs_space[arr] = i
+
+
 square_type = Enum("square_type", "empty snake food")
 
 STRAIGHT = 0
@@ -80,7 +88,7 @@ class Coordinates:
 class Environment:
     def __init__(self, grid_size):
         self.observation_dict = None
-        self.observation_arr = None
+        self.observation_arr = [0] * 11
         self.actions = [STRAIGHT, LEFT, RIGHT]
         self.grid_size = grid_size
         self.grid = [
@@ -90,6 +98,7 @@ class Environment:
         self.snake = self.spawn_snake()
         self.food = None
         self.score = 0
+        self.is_over = False
         self.spawn_food()
 
     def spawn_snake(self):
@@ -120,14 +129,11 @@ class Environment:
         danger_arr = []
         for action in self.actions:
             snake = deepcopy(self.snake)
-            print(snake.body)
-            print(self.snake.body)
             snake.change_direction(action)
             new_y, new_x = self.get_new_coords(head_y, head_x, snake)
             snake = self.update_snake(
                 Coordinates(new_x, new_y), snake, update_grid=False
             )
-            print("After", snake.body, "direction", snake.direction)
             if self.is_game_over(new_y, new_x) or snake.ate_itself():
                 danger_arr.append(1)
             else:
@@ -164,22 +170,22 @@ class Environment:
             self.snake.body[0].y, self.snake.body[0].x, self.snake
         )
         new_head = Coordinates(new_x, new_y)
-        self.snake = self.update_snake(new_head, self.snake)
         if self.is_game_over(new_y, new_x):
-            raise GameOver("Hit wall")
+            # print("Hit wall")
+            self.is_over = True
+            return
         if self.snake.ate_itself():
-            raise GameOver("Ate itself")
+            # print("Ate itself")
+            self.is_over = True
+            return
+        self.snake = self.update_snake(new_head, self.snake)
         if new_head == self.food:
-            snake.eat_food()
+            self.snake.eat_food()
             self.score += 10
             self.food = None
         if self.food is None:
             self.spawn_food()
         self.observation()
-        print("Danger:", self.get_danger())
-        print(
-            f"Observation dict: {self.observation_dict}\nObservation arr: {self.observation_arr}"
-        )
 
     def observation(self):
         self.observation_dict = {
@@ -188,29 +194,40 @@ class Environment:
             "down": False,
             "left": False,
         }
-        self.observation_arr = [0, 0, 0, 0]
+        food_arr = [0, 0, 0, 0]
         head = self.snake.body[0]
         if self.food is not None:
             if head.x > self.food.x:
                 self.observation_dict["left"] = True
-                self.observation_arr[LEFT] = 1
-                self.observation_arr[RIGHT] = 0
+                food_arr[LEFT] = 1
+                food_arr[RIGHT] = 0
                 self.observation_dict["right"] = False
             if head.x < self.food.x:
                 self.observation_dict["left"] = False
-                self.observation_arr[LEFT] = 0
-                self.observation_arr[RIGHT] = 1
+                food_arr[LEFT] = 0
+                food_arr[RIGHT] = 1
                 self.observation_dict["right"] = True
             if head.y < self.food.y:
                 self.observation_dict["down"] = True
-                self.observation_arr[DOWN] = 1
-                self.observation_arr[UP] = 0
+                food_arr[DOWN] = 1
+                food_arr[UP] = 0
                 self.observation_dict["up"] = False
             if head.y > self.food.y:
                 self.observation_dict["up"] = True
-                self.observation_arr[UP] = 1
-                self.observation_arr[DOWN] = 0
+                food_arr[UP] = 1
+                food_arr[DOWN] = 0
                 self.observation_dict["down"] = False
+        danger_arr = self.get_danger()
+        directions_arr = list(map(lambda x: int(x == self.snake.direction), range(4)))
+        self.observation_arr = danger_arr + directions_arr + food_arr
+
+    def step(self, action):
+        current_score = self.score
+        self.snake.change_direction(action)
+        self.move_snake()
+        reward = self.score - current_score
+        obs = obs_space[tuple(self.observation_arr)]
+        return obs, reward, self.is_over
 
     def print_board(self):
         head = self.snake.body[0]
@@ -243,6 +260,8 @@ while True:
         inp = LEFT
     elif inp == "d":
         inp = RIGHT
-    snake.change_direction(inp)
-    env.move_snake()
+    _, _, done = env.step(inp)
+    if done:
+        print("Game over")
+        break
     env.print_board()
