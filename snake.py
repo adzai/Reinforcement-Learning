@@ -1,3 +1,4 @@
+import pygame
 import random
 from copy import deepcopy
 from enum import Enum
@@ -5,21 +6,27 @@ from enum import Enum
 
 from itertools import product
 
+square_type = Enum("square_type", "empty snake food")
 obs_space = {}
 for i, arr in enumerate(product([0, 1], repeat=11)):
     obs_space[arr] = i
 
 
-square_type = Enum("square_type", "empty snake food")
-
 STRAIGHT = 0
 UP = 0
-DOWN = 1
-LEFT = 2
-RIGHT = 3
+DOWN = 3
+LEFT = 1
+RIGHT = 2
+
+COST = -20
+REWARD = 50
 
 
 class GameOver(Exception):
+    pass
+
+
+class Won(Exception):
     pass
 
 
@@ -88,7 +95,7 @@ class Coordinates:
 class Environment:
     def __init__(self, grid_size):
         self.observation_dict = None
-        self.observation_arr = [0] * 11
+        self.observation_arr = tuple([0]) * 11
         self.actions = [STRAIGHT, LEFT, RIGHT]
         self.grid_size = grid_size
         self.grid = [
@@ -115,6 +122,8 @@ class Environment:
             for x, _ in enumerate(row):
                 if self.grid[y][x] == square_type.empty:
                     available_coords.append(Coordinates(x, y))
+        if len(available_coords) == 0:
+            raise Won("You win!")
         chosen_coords = random.choice(available_coords)
         self.food = chosen_coords
         self.grid[chosen_coords.y][chosen_coords.x] = square_type.food
@@ -181,7 +190,7 @@ class Environment:
         self.snake = self.update_snake(new_head, self.snake)
         if new_head == self.food:
             self.snake.eat_food()
-            self.score += 10
+            self.score += REWARD
             self.food = None
         if self.food is None:
             self.spawn_food()
@@ -219,14 +228,17 @@ class Environment:
                 self.observation_dict["down"] = False
         danger_arr = self.get_danger()
         directions_arr = list(map(lambda x: int(x == self.snake.direction), range(4)))
-        self.observation_arr = danger_arr + directions_arr + food_arr
+        self.observation_arr = tuple(danger_arr + directions_arr + food_arr)
 
     def step(self, action):
         current_score = self.score
         self.snake.change_direction(action)
-        self.move_snake()
-        reward = self.score - current_score
-        obs = obs_space[tuple(self.observation_arr)]
+        try:
+            self.move_snake()
+        except Won:
+            return None, 1000, True
+        reward = COST if self.is_over else self.score - current_score
+        obs = obs_space[self.observation_arr]
         return obs, reward, self.is_over
 
     def print_board(self):
@@ -245,23 +257,182 @@ class Environment:
             print()
         print()
 
+    # def print_pygame(self):
+    #     head = self.snake.body[0]
+    #     print(f"Score: {self.score}, Snake length: {self.snake.length}")
+    #     for y, row in enumerate(self.grid):
+    #         for x, _ in enumerate(row):
+    #             if head.y == y and head.x == x:
+    #                 rect = pygame.Rect(
+    #                     head.x * width,
+    #                     head.y * width,
+    #                     width,
+    #                     width,
+    #                 )
+    #                 pygame.draw.rect(screen, (255, 0, 0), rect)
+    #             elif self.grid[y][x] == square_type.snake:
+    #                 rect = pygame.Rect(
+    #                     x * width + 10, y * width + 10, snake_width, snake_width
+    #                 )
+    #                 pygame.draw.rect(screen, (0, 255, 0), rect)
+    #             elif self.grid[y][x] == square_type.food:
+    #                 rect = pygame.Rect(
+    #                     x * width + 10,
+    #                     y * width + 10,
+    #                     snake_width,
+    #                     snake_width,
+    #                 )
+    #                 pygame.draw.rect(screen, (0, 0, 255), rect)
 
-env = Environment(9)
-snake = env.snake
-env.print_board()
-while True:
-    print(env.actions)
-    inp = input()
-    if len(inp) > 1:
-        inp = inp[0]
-    if inp == "":
-        inp = STRAIGHT
-    elif inp == "a":
-        inp = LEFT
-    elif inp == "d":
-        inp = RIGHT
-    _, _, done = env.step(inp)
-    if done:
-        print("Game over")
-        break
-    env.print_board()
+
+# env = Environment(5)
+# snake = env.snake
+# env.print_board()
+# while True:
+#     print(env.actions)
+#     inp = input()
+#     if len(inp) > 1:
+#         inp = inp[0]
+#     if inp == "q":
+#         break
+#     elif inp == "":
+#         inp = STRAIGHT
+#     elif inp == "a":
+#         inp = LEFT
+#     elif inp == "d":
+#         inp = RIGHT
+#     _, _, done = env.step(inp)
+#     if done:
+#         print("Game over")
+#         break
+#     env.print_board()
+
+import numpy as np
+
+
+rewards = []
+inputs = []
+
+total_episodes = 50_000
+learning_rate = 0.75
+gamma = 0.90
+epsilon = 1.0
+max_epsilon = 1.0
+min_epsilon = 0.01
+decay_rate = 0.0004
+
+q_table = np.zeros((len(obs_space.keys()), 3))
+
+explored_states = dict()
+
+import time
+
+
+def ai_play(qtable, env_size):
+    env = Environment(env_size)
+    state = obs_space[env.observation_arr]
+    done = False
+    while not done:
+        action = np.argmax(qtable[state, :])
+        new_state, _, done = env.step(action)
+        state = new_state
+        env.print_board()
+        time.sleep(0.15)
+
+
+# q_table = np.load("q_table3.npy")
+# ai_play(q_table, 16)
+for episode in range(total_episodes):
+    env = Environment(3)
+    state = obs_space[env.observation_arr]
+    step = 0
+    done = False
+    total_rewards = 0
+
+    while not done:
+        exploit = random.uniform(0, 1)
+
+        if exploit > epsilon:
+            action = np.argmax(q_table[state, :])
+        else:
+            action = random.randint(0, 2)
+
+        if episode == (total_episodes - 1):
+            inputs.append(action)
+        new_state, reward, done = env.step(action)
+
+        if reward > 0:
+            total_rewards += 10
+        else:
+            reward += 2
+
+        explored_states[state] = 1
+        q_table[state, action] = q_table[state, action] + learning_rate * (
+            reward + gamma * np.max(q_table[new_state, :]) - q_table[state, action]
+        )
+
+        state = new_state
+
+    epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay_rate * episode)
+    # print("Epsilon:", epsilon)
+    # print("Reward:", total_rewards)
+    if (episode + 1) % 1000 == 0:
+        print(
+            f"{episode} average: {str(sum(rewards) / episode)}, epsilon: {epsilon}, explored states: {len(explored_states.keys())}, max reward: {max(rewards)}"
+        )
+    # if (episode + 1) % 10000 == 0:
+    #     ai_play(qtable)
+    rewards.append(total_rewards)
+
+
+print("Score over time: " + str(sum(rewards) / total_episodes))
+import sys
+
+print(q_table)
+np.save("q_table3.npy", q_table)
+
+# screen = pygame.display.set_mode((720, 720))
+# player = pygame.Rect(300, 300, 20, 20)
+# width = 720 / 16
+# snake_width = 25
+# x, y = 0, 0
+# rects = []
+# for _ in range(16):
+#     for row in range(16):
+#         rects.append(pygame.Rect(x, y, width, width))
+#         x += width
+#     x = 0
+#     y += width
+
+# dir, size = (0, 0), 20
+# MOVEEVENT, t = pygame.USEREVENT + 1, 500
+# pygame.time.set_timer(MOVEEVENT, t)
+# red, green, blue = 255, 255, 255
+
+# pygame.init()
+# done = False
+# inp = None
+# while not done:
+#     keys = pygame.key.get_pressed()
+#     # if pygame.event.get(pygame.QUIT):
+#     #     break
+#     for e in pygame.event.get():
+#         if e.type == pygame.KEYDOWN:
+#             if e.key == pygame.K_d:
+#                 inputs.append(RIGHT)
+#             elif e.key == pygame.K_a:
+#                 inputs.append(LEFT)
+#         elif e.type == MOVEEVENT:  # is called every 't' milliseconds
+#             if len(inputs) > 0:
+#                 inp = inputs.pop(0)
+#             else:
+#                 inp = STRAIGHT
+#             _, _, done = env.step(inp)
+
+#     screen.fill((211, 211, 211))
+#     env.print_pygame()
+#     # for t in trail:
+#     #     pygame.draw.rect(screen, (255, 0, 0), t)
+#     # rect = pygame.Rect(head.x * width, head.y * width, width, width)
+#     # pygame.draw.rect(screen, (255, 0, 0), rect)
+#     pygame.display.flip()
