@@ -21,25 +21,22 @@ RIGHT = 2
 COST = -20
 REWARD = 50
 
-screen = pygame.display.set_mode((720, 720))
-player = pygame.Rect(300, 300, 20, 20)
-width = 720 / 16
+SCREEN_WIDTH = 720
+
+screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_WIDTH + SCREEN_WIDTH // 10))
+width = SCREEN_WIDTH // 16
 snake_width = 25
 x, y = 0, 0
-rects = []
-for _ in range(16):
-    for row in range(16):
-        rects.append(pygame.Rect(x, y, width, width))
-        x += width
-    x = 0
-    y += width
+
+line_rect = pygame.Rect(0, SCREEN_WIDTH + 1, SCREEN_WIDTH + SCREEN_WIDTH // 10, 1)
 
 dir, size = (0, 0), 20
 MOVEEVENT, t = pygame.USEREVENT + 1, 100
 pygame.time.set_timer(MOVEEVENT, t)
-red, green, blue = 255, 255, 255
 
 pygame.init()
+pygame.font.init()
+score_font = pygame.font.SysFont("arial", 30)
 done = False
 inp = None
 
@@ -291,12 +288,12 @@ class Environment:
                         width,
                         width,
                     )
-                    pygame.draw.rect(screen, (255, 0, 0), rect)
+                    pygame.draw.rect(screen, (200, 0, 0), rect)
                 elif self.grid[y][x] == square_type.snake:
                     rect = pygame.Rect(
                         x * width + 10, y * width + 10, snake_width, snake_width
                     )
-                    pygame.draw.rect(screen, (0, 255, 0), rect)
+                    pygame.draw.rect(screen, (34, 139, 34), rect)
                 elif self.grid[y][x] == square_type.food:
                     rect = pygame.Rect(
                         x * width + 10,
@@ -305,6 +302,16 @@ class Environment:
                         snake_width,
                     )
                     pygame.draw.rect(screen, (0, 0, 255), rect)
+
+            pygame.draw.rect(screen, (0, 0, 0), line_rect)
+            textsurface = score_font.render(
+                "Score: " + str(env.score // REWARD * 10),
+                True,
+                (0, 0, 0),
+            )
+            screen.blit(
+                textsurface, (SCREEN_WIDTH // 10, SCREEN_WIDTH + SCREEN_WIDTH // 20)
+            )
 
 
 # env = Environment(5)
@@ -347,8 +354,6 @@ q_table = np.zeros((len(obs_space.keys()), 3))
 
 explored_states = dict()
 
-import time
-
 
 def ai_play(qtable, env_size):
     env = Environment(env_size)
@@ -366,23 +371,38 @@ q_table = np.load("q_table3.npy")
 
 env = Environment(16)
 state = env.observation_arr
-while not done:
+running = True
+while running:
     keys = pygame.key.get_pressed()
     # if pygame.event.get(pygame.QUIT):
     #     break
-    for e in pygame.event.get():
-        if e.type == pygame.KEYDOWN:
-            if e.key == pygame.K_d:
-                inputs.append(RIGHT)
-            elif e.key == pygame.K_a:
-                inputs.append(LEFT)
-        elif e.type == MOVEEVENT:  # is called every 't' milliseconds
-            action = np.argmax(q_table[state, :])
-            new_state, _, done = env.step(action)
-            state = new_state
+    if not done:
+        for e in pygame.event.get():
+            if e.type == pygame.KEYDOWN:
+                if e.key == pygame.K_d:
+                    inputs.append(RIGHT)
+                elif e.key == pygame.K_a:
+                    inputs.append(LEFT)
+            elif e.type == MOVEEVENT:  # is called every 't' milliseconds
+                action = np.argmax(q_table[state, :])
+                new_state, _, done = env.step(action)
+                state = new_state
 
-    screen.fill((211, 211, 211))
+    screen.fill((192, 192, 192))
     env.print_pygame()
+    if done:
+        textsurface = score_font.render(
+            "Game over!",
+            True,
+            (200, 0, 0),
+        )
+        screen.blit(
+            textsurface,
+            (SCREEN_WIDTH // 2 + SCREEN_WIDTH // 10, SCREEN_WIDTH + SCREEN_WIDTH // 20),
+        )
+        for e in pygame.event.get():
+            if e.type == pygame.QUIT:
+                running = False
     # for t in trail:
     #     pygame.draw.rect(screen, (255, 0, 0), t)
     # rect = pygame.Rect(head.x * width, head.y * width, width, width)
