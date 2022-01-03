@@ -1,15 +1,13 @@
-import pygame
 import random
 from copy import deepcopy
 from enum import Enum
-
-
+import argparse
+import sys
+import numpy as np
 from itertools import product
 
+
 square_type = Enum("square_type", "empty snake food")
-obs_space = {}
-for i, arr in enumerate(product([0, 1], repeat=11)):
-    obs_space[arr] = i
 
 
 STRAIGHT = 0
@@ -18,27 +16,63 @@ DOWN = 3
 LEFT = 1
 RIGHT = 2
 
-COST = -20
-REWARD = 50
 
-SCREEN_WIDTH = 720
+parser = argparse.ArgumentParser(description="Snake Game RL")
+parser.add_argument("-t", "--train", action="store_true", help="Training mode")
+parser.add_argument("-p", "--play", action="store_true", help="AI playing mode")
+parser.add_argument("-q", "--q_table", type=str, help="Path to .npy Q table")
+parser.add_argument("--survival_reward", type=int, default=2, help="Survival reward")
+parser.add_argument("--cost", type=int, default=-20, help="Cost for reaching game over")
+parser.add_argument("--reward", type=int, default=150, help="Reward for eating food")
+parser.add_argument(
+    "--speed",
+    type=int,
+    default=100,
+    help="Speed of updating the snake game played in pygame in milliseconds. Default: 100",
+)
+parser.add_argument(
+    "-l",
+    "--learning_rate",
+    type=float,
+    default=0.75,
+    help="Learning rate used for training. Default: 0.75",
+)
+parser.add_argument(
+    "-d",
+    "--decay_rate",
+    type=float,
+    default=0.0004,
+    help="Decay rate used for training. Default: 0.0004",
+)
+parser.add_argument(
+    "--total_episodes",
+    type=int,
+    default=100_000,
+    help="Number of total episodes that should be used for training. Default: 100000",
+)
+parser.add_argument(
+    "-o",
+    "--output",
+    type=str,
+    default="snake_q_table.npy",
+    help="Path where .npy Q table will be saved. Default: snake_q_table.npy",
+)
+parser.add_argument(
+    "--env_size",
+    default=3,
+    type=int,
+    help="Environment size (e.g. --env_size 16 will create 16x16 env)."
+    + " When --play is supplied, only 16x16 is used. Default: 3",
+)
+args = parser.parse_args()
 
-screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_WIDTH + SCREEN_WIDTH // 10))
-width = SCREEN_WIDTH // 16
-snake_width = 25
-x, y = 0, 0
+SURVIVAL_REWARD = args.survival_reward
+COST = args.cost
+REWARD = args.reward
 
-line_rect = pygame.Rect(0, SCREEN_WIDTH + 1, SCREEN_WIDTH + SCREEN_WIDTH // 10, 1)
-
-dir, size = (0, 0), 20
-MOVEEVENT, t = pygame.USEREVENT + 1, 100
-pygame.time.set_timer(MOVEEVENT, t)
-
-pygame.init()
-pygame.font.init()
-score_font = pygame.font.SysFont("arial", 30)
-done = False
-inp = None
+if not args.train and not args.play:
+    print("Must specify mode: Use either --play or --train")
+    sys.exit(1)
 
 
 class GameOver(Exception):
@@ -114,8 +148,14 @@ class Coordinates:
 class Environment:
     def __init__(self, grid_size):
         self.observation_dict = None
-        self.observation_arr = tuple([0]) * 11
-        self.actions = [STRAIGHT, LEFT, RIGHT]
+        self.state_size = 11
+        self.observation_arr = tuple([0]) * self.state_size
+        self.observation_space = {
+            arr: i for i, arr in enumerate(product([0, 1], repeat=self.state_size))
+        }
+        self.observation_space_len = len(self.observation_space.keys())
+        self.action_space = [STRAIGHT, LEFT, RIGHT]
+        self.action_space_len = len(self.action_space)
         self.grid_size = grid_size
         self.grid = [
             [square_type.empty for _ in range(self.grid_size)]
@@ -126,6 +166,13 @@ class Environment:
         self.score = 0
         self.is_over = False
         self.spawn_food()
+
+    def reset(self):
+        self.__init__(self.grid_size)
+        return self.observation_space[self.observation_arr]
+
+    def get_random_action(self):
+        return random.choice(self.action_space)
 
     def spawn_snake(self):
         center = self.grid_size // 2
@@ -155,7 +202,7 @@ class Environment:
     def get_danger(self):
         head_y, head_x = (self.snake.body[0].y, self.snake.body[0].x)
         danger_arr = []
-        for action in self.actions:
+        for action in self.action_space:
             snake = deepcopy(self.snake)
             snake.change_direction(action)
             new_y, new_x = self.get_new_coords(head_y, head_x, snake)
@@ -256,9 +303,8 @@ class Environment:
             self.move_snake()
         except Won:
             return None, 1000, True
-        reward = COST if self.is_over else self.score - current_score
-        obs = obs_space[self.observation_arr]
-        return obs, reward, self.is_over
+        reward = COST if self.is_over else self.score - current_score  # 2 for survival
+        return self.observation_space[self.observation_arr], reward, self.is_over
 
     def print_board(self):
         head = self.snake.body[0]
@@ -278,7 +324,6 @@ class Environment:
 
     def print_pygame(self):
         head = self.snake.body[0]
-        # print(f"Score: {self.score}, Snake length: {self.snake.length}")
         for y, row in enumerate(self.grid):
             for x, _ in enumerate(row):
                 if head.y == y and head.x == x:
@@ -336,28 +381,10 @@ class Environment:
 #         break
 #     env.print_board()
 
-import numpy as np
-
-
-rewards = []
-inputs = []
-
-total_episodes = 50_000
-learning_rate = 0.75
-gamma = 0.90
-epsilon = 1.0
-max_epsilon = 1.0
-min_epsilon = 0.01
-decay_rate = 0.0004
-
-q_table = np.zeros((len(obs_space.keys()), 3))
-
-explored_states = dict()
-
 
 def ai_play(qtable, env_size):
     env = Environment(env_size)
-    state = obs_space[env.observation_arr]
+    state = env.reset()
     done = False
     while not done:
         action = np.argmax(qtable[state, :])
@@ -365,95 +392,119 @@ def ai_play(qtable, env_size):
         state = new_state
 
 
-q_table = np.load("q_table3.npy")
-# ai_play(q_table, 16)
-# print(inputs)
+if args.play:
+    import pygame
 
-env = Environment(16)
-state = env.observation_arr
-running = True
-while running:
-    keys = pygame.key.get_pressed()
-    # if pygame.event.get(pygame.QUIT):
-    #     break
-    if not done:
-        for e in pygame.event.get():
-            if e.type == pygame.KEYDOWN:
-                if e.key == pygame.K_d:
-                    inputs.append(RIGHT)
-                elif e.key == pygame.K_a:
-                    inputs.append(LEFT)
-            elif e.type == MOVEEVENT:  # is called every 't' milliseconds
+    SCREEN_WIDTH = 720
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_WIDTH + SCREEN_WIDTH // 10))
+    width = SCREEN_WIDTH // 16
+    snake_width = 25
+    x, y = 0, 0
+    line_rect = pygame.Rect(0, SCREEN_WIDTH + 1, SCREEN_WIDTH + SCREEN_WIDTH // 10, 1)
+    dir, size = (0, 0), 20
+    MOVEEVENT = pygame.USEREVENT + 1
+    t = args.speed
+    pygame.time.set_timer(MOVEEVENT, t)
+
+    pygame.init()
+    pygame.font.init()
+    score_font = pygame.font.SysFont("arial", 30)
+    done = False
+    inp = None
+    env = Environment(16)
+    state = env.observation_arr
+    running = True
+    if args.q_table is None:
+        print(
+            "Must provide --q_table argument with path to a q table saved as a numpy array."
+        )
+        sys.exit(2)
+    try:
+        q_table = np.load(args.q_table)
+    except Exception as e:
+        print(f"Couldn't load q table {args.q_table}: {e}")
+        sys.exit(3)
+    while running:
+        keys = pygame.key.get_pressed()
+        if not done:
+            for e in pygame.event.get():
+                if e.type == MOVEEVENT:  # is called every 't' milliseconds
+                    action = np.argmax(q_table[state, :])
+                    new_state, _, done = env.step(action)
+                    state = new_state
+
+        screen.fill((192, 192, 192))
+        env.print_pygame()
+        if done:
+            textsurface = score_font.render(
+                "Game over!",
+                True,
+                (200, 0, 0),
+            )
+            screen.blit(
+                textsurface,
+                (
+                    SCREEN_WIDTH // 2 + SCREEN_WIDTH // 10,
+                    SCREEN_WIDTH + SCREEN_WIDTH // 20,
+                ),
+            )
+            for e in pygame.event.get():
+                if e.type == pygame.QUIT:
+                    running = False
+        pygame.display.flip()
+
+else:
+    env = Environment(args.env_size)
+    total_episodes = args.total_episodes
+    learning_rate = args.learning_rate
+    gamma = 0.90
+    epsilon = 1.0
+    max_epsilon = 1.0
+    min_epsilon = 0.01
+    decay_rate = args.decay_rate
+    explored_states = dict()
+    q_table = np.zeros((env.observation_space_len, env.action_space_len))
+    rewards = []
+    moves_per_episode = []
+    for episode in range(1, total_episodes + 1):
+        state = env.reset()
+        step = 0
+        done = False
+        total_rewards = 0
+        moves = 0
+        while not done and moves != 100_000:
+            exploit = random.uniform(0, 1)
+
+            if exploit > epsilon:
                 action = np.argmax(q_table[state, :])
-                new_state, _, done = env.step(action)
-                state = new_state
+            else:
+                action = env.get_random_action()
 
-    screen.fill((192, 192, 192))
-    env.print_pygame()
-    if done:
-        textsurface = score_font.render(
-            "Game over!",
-            True,
-            (200, 0, 0),
+            new_state, reward, done = env.step(action)
+            moves += 1
+
+            if not done:
+                total_rewards += reward // REWARD * 10
+                reward += SURVIVAL_REWARD
+
+            explored_states[state] = 1
+            q_table[state, action] = q_table[state, action] + learning_rate * (
+                reward + gamma * np.max(q_table[new_state, :]) - q_table[state, action]
+            )
+
+            state = new_state
+
+        moves_per_episode.append(moves)
+        epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(
+            -decay_rate * episode
         )
-        screen.blit(
-            textsurface,
-            (SCREEN_WIDTH // 2 + SCREEN_WIDTH // 10, SCREEN_WIDTH + SCREEN_WIDTH // 20),
-        )
-        for e in pygame.event.get():
-            if e.type == pygame.QUIT:
-                running = False
-    # for t in trail:
-    #     pygame.draw.rect(screen, (255, 0, 0), t)
-    # rect = pygame.Rect(head.x * width, head.y * width, width, width)
-    # pygame.draw.rect(screen, (255, 0, 0), rect)
-    pygame.display.flip()
+        if episode % 1000 == 0:
+            print(
+                f"{episode} ep, average score: {sum(rewards) / episode:.2f}, epsilon: {epsilon}, explored states: {len(explored_states.keys())}, max score: {max(rewards)}, average moves: {sum(moves_per_episode) / episode:.2f}"
+            )
+        rewards.append(total_rewards)
 
-# for episode in range(total_episodes):
-#     env = Environment(3)
-#     state = obs_space[env.observation_arr]
-#     step = 0
-#     done = False
-#     total_rewards = 0
+    print("Score over time: " + str(sum(rewards) / total_episodes))
 
-#     while not done:
-#         exploit = random.uniform(0, 1)
-
-#         if exploit > epsilon:
-#             action = np.argmax(q_table[state, :])
-#         else:
-#             action = random.randint(0, 2)
-
-#         if episode == (total_episodes - 1):
-#             inputs.append(action)
-#         new_state, reward, done = env.step(action)
-
-#         if reward > 0:
-#             total_rewards += 10
-#         else:
-#             reward += 2
-
-#         explored_states[state] = 1
-#         q_table[state, action] = q_table[state, action] + learning_rate * (
-#             reward + gamma * np.max(q_table[new_state, :]) - q_table[state, action]
-#         )
-
-#         state = new_state
-
-#     epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay_rate * episode)
-#     # print("Epsilon:", epsilon)
-#     # print("Reward:", total_rewards)
-#     if (episode + 1) % 1000 == 0:
-#         print(
-#             f"{episode} average: {str(sum(rewards) / episode)}, epsilon: {epsilon}, explored states: {len(explored_states.keys())}, max reward: {max(rewards)}"
-#         )
-#     # if (episode + 1) % 10000 == 0:
-#     #     ai_play(qtable)
-#     rewards.append(total_rewards)
-
-
-# print("Score over time: " + str(sum(rewards) / total_episodes))
-# import sys
-
-# print(q_table)
-# np.save("q_table3.npy", q_table)
+    np.save(args.output, q_table)
+    print(f"Q table saved to {args.output}")
