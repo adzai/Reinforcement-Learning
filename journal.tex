@@ -1,0 +1,107 @@
+\documentclass[lettersize,journal]{IEEEtran}
+\usepackage{amsmath,amsfonts}
+\usepackage{algorithmic}
+\usepackage{array}
+\usepackage[caption=false,font=normalsize,labelfont=sf,textfont=sf]{subfig}
+\usepackage{textcomp}
+\usepackage{stfloats}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+% \hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\usepackage{balance}
+\begin{document}
+\title{Q-Learning in the snake game}
+\author{Adam Zaiter}
+
+\maketitle
+
+\begin{abstract}
+\end{abstract}
+
+\begin{IEEEkeywords}
+\end{IEEEkeywords}
+
+
+\section{Introduction}
+
+\section{Snake game}
+The snake game was programmed in python.
+It supports square grids of any size that is $>= 3$.
+The snake starts in the middle of the grid with a head of
+1 square in size and attached
+body with 2 squares in size. There also is food spawned in a random
+square that is not occupied by the snake. The objective for the
+snake is to eat as much food as possible. If the food is eaten,
+the snake gains + 10 score and grows an additional body part of
+1 square in size. If the snake collides with the borders of the grid
+or the head collides with it's own body, the game ends.\label{game-over}
+
+\section{Episode}
+An episode contains all of the actions taken in one game
+of the snake. The episode ends when a terminal state is
+reached (game ends), described in section \ref{game-over}. In the case of the snake game that is either
+the head of the snake colliding with a border or the head
+colliding with it's own body.
+
+\section{Step}
+A step is the performance of one action in a given state.
+
+
+
+\section{Q-Learning}
+Q-Learning finds the optimal policy by learning
+the best Q values for each state-action pair.
+
+The Q function accepts the current state and an action. It then
+returns the expected reward for taking said action for the given
+state.
+
+The agent then plays episodes. For each step in the episode
+the Q values in the Q table are updated using the Bellman
+equation. This process goes on until the q function converges
+to the optimal function q*.
+
+\section{Hypothesis}
+The goal is to train an agent that will play the snake game
+with any chosen grid size as best as possible using just Q-Learning.
+Given the attributes of Q-Learning, it should be possible to train
+an agent, that plays the game of snake at a very good level. It
+is not expected to be perfect, but it should play as close to it
+as possible.
+
+
+
+% It is
+% probably not feasible to achieve superhuman performance however,
+% because of the limited computing resources. The state space
+% is simply too large when taking into account games of snake
+% with any given grid size.
+
+
+
+\section{State space}
+For this project, the computing resources are somewhat limited and
+as such, these limited resources have to be taken into consideration
+when designing the state and action spaces.
+The state space for a snake game with a variable size would be
+too big, if it were taken as is. That is, because the snake and
+it's body adds many additional states, as the snake can grow it's body to
+be the same size as all of the squares in the grid. Also, the head is distinct
+from the other body parts and would have to be accounted for in all of the states.
+
+
+\section{Training}
+Best results were seen when training on a 3x3 grid.
+The training did not take as much time, as fewer moves
+were made on average.
+
+% \begin{thebibliography}{1}
+% \bibitem{Startupsum}
+    % Startupsum - Lorem Ipsum for Startups. 2021. Startupsum - Lorem Ipsum for startups. A perfect blend of being professional and having fresh filler content.. [online] Available at: \url{https://startupsum.com/} [Accessed 1 December 2021].
+
+% \end{thebibliography}
+
+\end{document}

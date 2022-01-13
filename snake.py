@@ -16,13 +16,14 @@ DOWN = 3
 LEFT = 1
 RIGHT = 2
 
-
 parser = argparse.ArgumentParser(description="Snake Game RL")
 parser.add_argument("-t", "--train", action="store_true", help="Training mode")
 parser.add_argument("-p", "--play", action="store_true", help="AI playing mode")
 parser.add_argument("-q", "--q_table", type=str, help="Path to .npy Q table")
-parser.add_argument("--survival_reward", type=int, default=2, help="Survival reward")
-parser.add_argument("--cost", type=int, default=-20, help="Cost for reaching game over")
+parser.add_argument("--survival_reward", type=int, default=0, help="Survival reward")
+parser.add_argument(
+    "--cost", type=int, default=-300, help="Cost for reaching game over"
+)
 parser.add_argument("--reward", type=int, default=150, help="Reward for eating food")
 parser.add_argument(
     "--speed",
@@ -61,8 +62,7 @@ parser.add_argument(
     "--env_size",
     default=3,
     type=int,
-    help="Environment size (e.g. --env_size 16 will create 16x16 env)."
-    + " When --play is supplied, only 16x16 is used. Default: 3",
+    help="Environment size (e.g. --env_size 16 will create 16x16 env).",
 )
 args = parser.parse_args()
 
@@ -148,7 +148,7 @@ class Coordinates:
 class Environment:
     def __init__(self, grid_size):
         self.observation_dict = None
-        self.state_size = 11
+        self.state_size = 14
         self.observation_arr = tuple([0]) * self.state_size
         self.observation_space = {
             arr: i for i, arr in enumerate(product([0, 1], repeat=self.state_size))
@@ -201,7 +201,8 @@ class Environment:
 
     def get_danger(self):
         head_y, head_x = (self.snake.body[0].y, self.snake.body[0].x)
-        danger_arr = []
+        danger_arr1 = []
+        danger_arr2 = []
         for action in self.action_space:
             snake = deepcopy(self.snake)
             snake.change_direction(action)
@@ -210,10 +211,21 @@ class Environment:
                 Coordinates(new_x, new_y), snake, update_grid=False
             )
             if self.is_game_over(new_y, new_x) or snake.ate_itself():
-                danger_arr.append(1)
+                danger_arr1.append(1)
+                danger_arr2.append(1)
             else:
-                danger_arr.append(0)
-        return danger_arr
+                danger_arr1.append(0)
+                snake = deepcopy(snake)
+                snake.change_direction(action)
+                new_y, new_x = self.get_new_coords(head_y, head_x, snake)
+                snake = self.update_snake(
+                    Coordinates(new_x, new_y), snake, update_grid=False
+                )
+                if self.is_game_over(new_y, new_x) or snake.ate_itself():
+                    danger_arr2.append(1)
+                else:
+                    danger_arr2.append(0)
+        return danger_arr1 + danger_arr2
 
     def get_new_coords(self, y, x, snake):
         if snake.direction == UP:
@@ -296,6 +308,21 @@ class Environment:
         directions_arr = list(map(lambda x: int(x == self.snake.direction), range(4)))
         self.observation_arr = tuple(danger_arr + directions_arr + food_arr)
 
+    # def observation_full(self):
+    #     state_space = []
+    #     for y, row in enumerate(self.grid):
+    #         for x, elem in enumerate(row):
+    #             if elem == square_type.snake:
+    #                 if env.snake.body[0].x == x and env.snake.body[0].y == y:
+    #                     state_space += [1, 0, 0, 0]
+    #                 else:
+    #                     state_space += [0, 1, 0, 0]
+    #             elif elem == square_type.food:
+    #                 state_space += [0, 0, 1, 0]
+    #             else:
+    #                 state_space += [0, 0, 0, 1]
+    #     self.observation_arr = tuple(state_space)
+
     def step(self, action):
         current_score = self.score
         self.snake.change_direction(action)
@@ -348,7 +375,9 @@ class Environment:
                     )
                     pygame.draw.rect(screen, (0, 0, 255), rect)
 
-            pygame.draw.rect(screen, (0, 0, 0), line_rect)
+            pygame.draw.rect(screen, (112, 112, 112), line_rect)
+            pygame.draw.rect(screen, (0, 0, 0), x_rect)
+            pygame.draw.rect(screen, (0, 0, 0), y_rect)
             textsurface = score_font.render(
                 "Score: " + str(env.score // REWARD * 10),
                 True,
@@ -401,6 +430,8 @@ if args.play:
     snake_width = 25
     x, y = 0, 0
     line_rect = pygame.Rect(0, SCREEN_WIDTH + 1, SCREEN_WIDTH + SCREEN_WIDTH // 10, 1)
+    x_rect = pygame.Rect(0, width * args.env_size, width * args.env_size, 1)
+    y_rect = pygame.Rect(width * args.env_size, 0, 1, width * args.env_size)
     dir, size = (0, 0), 20
     MOVEEVENT = pygame.USEREVENT + 1
     t = args.speed
@@ -411,7 +442,7 @@ if args.play:
     score_font = pygame.font.SysFont("arial", 30)
     done = False
     inp = None
-    env = Environment(16)
+    env = Environment(args.env_size)
     state = env.observation_arr
     running = True
     if args.q_table is None:
@@ -501,6 +532,7 @@ else:
         epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(
             -decay_rate * episode
         )
+        # epsilon = max(min_epsilon, epsilon - 0.01)
         if episode % 1000 == 0:
             aggr_ep_rewards["ep"].append(episode)
             aggr_ep_rewards["avg"].append(sum(rewards) / episode)
