@@ -26,9 +26,21 @@
 
 
 \section{Introduction}
+This paper will attempt to implement the Q-learning algorithm
+for a basic game of snake. A hypothesis about the expected learning
+outcome will be established and reviewed after implementing the
+Q-Learing algorithm. The implementation will be done in Python
+and a custom snake game environment will be created.
+This environment will allow for training of the agent with different
+hyperparameters as well as visualizing a game played by the
+trained agent.
+
+
+Basic knowledge of reinforcement learning is assumed, as this paper
+is implementing concepts from the Szepesvari paper.
 
 \section{Snake game}
-The snake game was programmed in python.
+The snake game is programmed in python.
 It supports square grids of any size that is $>= 3$.
 The snake starts in the middle of the grid with a head of
 1 square in size and attached
@@ -72,6 +84,55 @@ an agent, that plays the game of snake at a very good level. It
 is not expected to be perfect, but it should play as close to it
 as possible.
 
+
+\section{Environment}
+The environment mimics functionality provided by environments in
+OpenAI gyms. This made the process of applying the Q-Learning
+algorithm quite simple, as the OpenAI environments are designed
+with reinforcement learning in mind.
+
+The environment provides three actions for the agent to take:
+\begin{enumerate}
+    \item Turn the snake head left.
+    \item Turn the snake head right.
+    \item Continue heading straight.
+\end{enumerate}
+These values are encoded as integers 0, 1, 2 and aliased as
+constants LEFT, RIGHT and STRAIGHT in the code.
+
+The environment does not provide the full state of the board,
+as there are simply too many states to represent for a grid
+of variable size. Thus, the environment is restricted to
+this basic information:
+\begin{itemize}
+    \item Information about danger. It indicates if after taking an action from the action space in the current state
+        the game will be over. This can be expanded for a lookahead of one or more turns in the future.
+    \item Information about food position. The values are left, right, up and down.
+    \item Information about the snake's current direction. There are four values: left, right, up and down.
+\end{itemize}
+
+After gathering this information, it is encoded in a 2D array. For example, the array for food position
+is an array of four values. Each position of the array corresponds to a value (left, right, up, down).
+Thus if the food is left, the array on position left will have the value of 1 (true). Otherwise, the
+value will be 0 (false). This applies for all positions. In the end, three individual arrays for danger,
+food and direction are created and are returned concatenated as the observation array.
+
+\section{Observations}
+The snake seems to learn better in smaller environments.
+
+Even with limited information the snake learns the strategy
+of creating as much space as possible for it's own body.
+This results in the snake hugging the borders as much
+as possible.
+Thus, it takes longer paths to get to the reward (food) which
+might seem strange early in the game.
+However when the snake's body is longer after collecting a
+few rewards, the benefits of this strategy are fully visible.
+
+
+Since the environment is custom, some thought had to be given
+to what kind of rewards the agent should get as well as their
+quantity.
 
 
 % It is
