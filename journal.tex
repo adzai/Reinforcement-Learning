@@ -8,7 +8,8 @@
 \usepackage{url}
 \usepackage{verbatim}
 \usepackage{graphicx}
-% \hyphenation{op-tical net-works semi-conduc-tor IEEE-Xplore}
+\usepackage{cite}
+\graphicspath{ {./plots/} }
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \usepackage{balance}
@@ -37,7 +38,7 @@ trained agent.
 
 
 Basic knowledge of reinforcement learning is assumed, as this paper
-is implementing concepts from the Szepesvari paper.
+is implementing concepts from the Szepesvari paper \cite{szepesvari}.
 
 \section{Snake game}
 The snake game is programmed in python.
@@ -59,7 +60,7 @@ the head of the snake colliding with a border or the head
 colliding with it's own body.
 
 \section{Step}
-A step is the performance of one action in a given state.
+A step is the performance of one action from the action space in a given state.
 
 
 
@@ -115,7 +116,9 @@ After gathering this information, it is encoded in a 2D array. For example, the 
 is an array of four values. Each position of the array corresponds to a value (left, right, up, down).
 Thus if the food is left, the array on position left will have the value of 1 (true). Otherwise, the
 value will be 0 (false). This applies for all positions. In the end, three individual arrays for danger,
-food and direction are created and are returned concatenated as the observation array.
+food and direction are created and are returned concatenated as the current state.
+
+\section{Training}
 
 \section{Observations}
 The snake seems to learn better in smaller environments.
@@ -123,10 +126,9 @@ The snake seems to learn better in smaller environments.
 Even with limited information the snake learns the strategy
 of creating as much space as possible for it's own body.
 This results in the snake hugging the borders as much
-as possible.
-Thus, it takes longer paths to get to the reward (food) which
+as possible, thus it takes longer paths to get to the reward (food) which
 might seem strange early in the game.
-However when the snake's body is longer after collecting a
+However, when the snake's body is longer after collecting a
 few rewards, the benefits of this strategy are fully visible.
 
 
@@ -135,13 +137,32 @@ to what kind of rewards the agent should get as well as their
 quantity.
 
 
-% It is
-% probably not feasible to achieve superhuman performance however,
-% because of the limited computing resources. The state space
-% is simply too large when taking into account games of snake
-% with any given grid size.
+\section{Extending the state space}
+The most obvious way to extend the state is to add more
+information about danger. For the most basic case, danger
+is supplied as an array of boolean values. From the current
+state, a lookahead is performormed on every action from
+the actions space. If the action would result in a game
+over, danger is set to true for that action. This
+array can be extended to looking ahead more than one action
+in the future. This however grows the danger array
+exponentially, so the comparison will be made only between
+one and two future actions lookahead.
 
+\section{Plots}
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.5in]{3_fig.png}
+\caption{3x3 environment 11-size state space}
+\label{fig1}
+\end{figure}
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.5in]{3-depth_fig.png}
+\caption{3x3 environment 20-size state space}
+\label{fig1}
+\end{figure}
 
 \section{State space}
 For this project, the computing resources are somewhat limited and
@@ -153,16 +174,22 @@ it's body adds many additional states, as the snake can grow it's body to
 be the same size as all of the squares in the grid. Also, the head is distinct
 from the other body parts and would have to be accounted for in all of the states.
 
+The state space is represented as a python dictionary, where the keys are
+the individual state arrays and keys are their indices. This indices are later
+used for indexing the Q table. The indices correspond to each state, and hold
+an array of Q values for each action.
+
 
 \section{Training}
 Best results were seen when training on a 3x3 grid.
 The training did not take as much time, as fewer moves
 were made on average.
 
-% \begin{thebibliography}{1}
-% \bibitem{Startupsum}
-    % Startupsum - Lorem Ipsum for Startups. 2021. Startupsum - Lorem Ipsum for startups. A perfect blend of being professional and having fresh filler content.. [online] Available at: \url{https://startupsum.com/} [Accessed 1 December 2021].
+\begin{thebibliography}{1}
+\bibitem{szepesvari}
+    Csaba Szepesvari - Algorithms for Reinforcement Learning. [online] Available at: \url{https://sites.ualberta.ca/~szepesva/papers/RLAlgsInMDPs.pdf} [Accessed 15 January 2022].
 
-% \end{thebibliography}
+\end{thebibliography}
+
 
 \end{document}

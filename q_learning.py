@@ -17,7 +17,7 @@ def train(args):
     explored_states = dict()
     q_table = np.zeros((env.observation_space_len, env.action_space_len))
     rewards = []
-    aggr_ep_rewards = {"ep": [], "avg": [], "max": [], "moves": []}
+    aggr_ep_rewards = {"ep": [], "avg": [], "max": [], "moves": [], "states": []}
     moves_per_episode = []
     for episode in range(1, total_episodes + 1):
         state = env.reset()
@@ -50,11 +50,12 @@ def train(args):
         epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(
             -decay_rate * episode
         )
-        if episode % 1000 == 0:
+        if episode % 100 == 0:
             aggr_ep_rewards["ep"].append(episode)
             aggr_ep_rewards["avg"].append(sum(rewards) / episode)
             aggr_ep_rewards["max"].append(max(rewards))
             aggr_ep_rewards["moves"].append(sum(moves_per_episode) / episode)
+            aggr_ep_rewards["states"].append(len(explored_states.keys()))
             print(
                 f"{episode} ep, average score: {sum(rewards) / episode:.2f}, epsilon: {epsilon}, explored states: {len(explored_states.keys())}, max score: {max(rewards)}, average moves: {sum(moves_per_episode) / episode:.2f}"
             )
@@ -64,9 +65,10 @@ def train(args):
 
     np.save(args.output, q_table)
     plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["avg"], label="average rewards")
-    plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["max"], label="max rewards")
-    plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["moves"], label="min rewards")
-    plt.legend(loc=4)
+    # plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["max"], label="max rewards")
+    plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["moves"], label="average moves")
+    plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["states"], label="explored states")
+    plt.legend(loc=0)
     qtable_save_location = args.output
     print(f"Q table saved to {qtable_save_location}")
     fig_save_location = qtable_save_location.split(".npy")[0] + "_fig.png"

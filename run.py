@@ -27,8 +27,8 @@ parser.add_argument(
     "-d",
     "--decay_rate",
     type=float,
-    default=0.0004,
-    help="Decay rate used for training. Default: 0.0004",
+    default=0.007,
+    help="Decay rate used for training. Default: 0.007",
 )
 parser.add_argument(
     "--total_episodes",
@@ -52,16 +52,16 @@ parser.add_argument(
 args = parser.parse_args()
 
 
-if not args.train and not args.play:
-    print("Must specify mode: Use either --play or --train")
-    sys.exit(1)
+if __name__ == "__main__":
+    if not args.train and not args.play:
+        print("Must specify mode: Use either --play or --train")
+        sys.exit(1)
 
+    if args.play:
+        from GUI import ai_play
 
-if args.play:
-    from GUI import ai_play
+        ai_play(args)
+    else:
+        from q_learning import train
 
-    ai_play(args)
-else:
-    from q_learning import train
-
-    train(args)
+        train(args)

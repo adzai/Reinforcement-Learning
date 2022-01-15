@@ -175,7 +175,7 @@ class Environment:
         try:
             self.move_snake()
         except Won:
-            return None, 1000, True
+            return None, REWARD, True
         reward = COST if self.is_over else self.score - current_score
         return self.observation_space[self.observation_arr], reward, self.is_over
 
