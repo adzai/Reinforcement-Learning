@@ -1,5 +1,5 @@
 import random
-from copy import deepcopy
+from collections import defaultdict
 from enum import Enum
 import argparse
 import sys
@@ -8,6 +8,15 @@ from itertools import product
 
 
 square_type = Enum("square_type", "empty snake food")
+
+
+COUNTER = -1
+
+
+def get_key():
+    global COUNTER
+    COUNTER += 1
+    return COUNTER
 
 
 STRAIGHT = 0
@@ -23,6 +32,11 @@ parser.add_argument("-q", "--q_table", type=str, help="Path to .npy Q table")
 parser.add_argument("--survival_reward", type=int, default=0, help="Survival reward")
 parser.add_argument(
     "--cost", type=int, default=-300, help="Cost for reaching game over"
+)
+parser.add_argument(
+    "--depth",
+    action="store_true",
+    help="Will add information about 1 more turn to the state space. DISCLAIMER: If the agent was trained with --depth, it must be played with --depth as well.",
 )
 parser.add_argument("--reward", type=int, default=150, help="Reward for eating food")
 parser.add_argument(
@@ -148,7 +162,7 @@ class Coordinates:
 class Environment:
     def __init__(self, grid_size):
         self.observation_dict = None
-        self.state_size = 14
+        self.state_size = 20 if args.depth else 11
         self.observation_arr = tuple([0]) * self.state_size
         self.observation_space = {
             arr: i for i, arr in enumerate(product([0, 1], repeat=self.state_size))
@@ -168,7 +182,17 @@ class Environment:
         self.spawn_food()
 
     def reset(self):
-        self.__init__(self.grid_size)
+        # self.__init__(self.grid_size)
+        self.observation_arr = tuple([0]) * self.state_size
+        self.grid = [
+            [square_type.empty for _ in range(self.grid_size)]
+            for _ in range(self.grid_size)
+        ]
+        self.snake = self.spawn_snake()
+        self.food = None
+        self.score = 0
+        self.is_over = False
+        self.spawn_food()
         return self.observation_space[self.observation_arr]
 
     def get_random_action(self):
@@ -199,33 +223,23 @@ class Environment:
             new_y < 0 or new_y >= self.grid_size or new_x < 0 or new_x >= self.grid_size
         )
 
-    def get_danger(self):
-        head_y, head_x = (self.snake.body[0].y, self.snake.body[0].x)
-        danger_arr1 = []
-        danger_arr2 = []
+    def get_danger(self, snake, depth=False):
+        head_y, head_x = (snake.body[0].y, snake.body[0].x)
+        danger_arr = []
         for action in self.action_space:
-            snake = deepcopy(self.snake)
+            snake = Snake(self.snake.body)
             snake.change_direction(action)
             new_y, new_x = self.get_new_coords(head_y, head_x, snake)
             snake = self.update_snake(
                 Coordinates(new_x, new_y), snake, update_grid=False
             )
             if self.is_game_over(new_y, new_x) or snake.ate_itself():
-                danger_arr1.append(1)
-                danger_arr2.append(1)
+                danger_arr.append(1)
             else:
-                danger_arr1.append(0)
-                snake = deepcopy(snake)
-                snake.change_direction(action)
-                new_y, new_x = self.get_new_coords(head_y, head_x, snake)
-                snake = self.update_snake(
-                    Coordinates(new_x, new_y), snake, update_grid=False
-                )
-                if self.is_game_over(new_y, new_x) or snake.ate_itself():
-                    danger_arr2.append(1)
-                else:
-                    danger_arr2.append(0)
-        return danger_arr1 + danger_arr2
+                danger_arr.append(0)
+            if depth:
+                danger_arr += self.get_danger(snake)
+        return danger_arr
 
     def get_new_coords(self, y, x, snake):
         if snake.direction == UP:
@@ -304,7 +318,7 @@ class Environment:
                 food_arr[UP] = 1
                 food_arr[DOWN] = 0
                 self.observation_dict["down"] = False
-        danger_arr = self.get_danger()
+        danger_arr = self.get_danger(self.snake, args.depth)
         directions_arr = list(map(lambda x: int(x == self.snake.direction), range(4)))
         self.observation_arr = tuple(danger_arr + directions_arr + food_arr)
 
@@ -443,7 +457,7 @@ if args.play:
     done = False
     inp = None
     env = Environment(args.env_size)
-    state = env.observation_arr
+    state = env.reset()
     running = True
     if args.q_table is None:
         print(
@@ -452,6 +466,7 @@ if args.play:
         sys.exit(2)
     try:
         q_table = np.load(args.q_table)
+        print("Loaded Q table:", args.q_table)
     except Exception as e:
         print(f"Couldn't load q table {args.q_table}: {e}")
         sys.exit(3)
@@ -459,7 +474,7 @@ if args.play:
         keys = pygame.key.get_pressed()
         if not done:
             for e in pygame.event.get():
-                if e.type == MOVEEVENT:  # is called every 't' milliseconds
+                if e.type == MOVEEVENT:
                     action = np.argmax(q_table[state, :])
                     new_state, _, done = env.step(action)
                     state = new_state
