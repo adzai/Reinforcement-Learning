@@ -22,8 +22,8 @@
 \begin{abstract}
 \end{abstract}
 
-\begin{IEEEkeywords}
-\end{IEEEkeywords}
+% \begin{IEEEkeywords}
+% \end{IEEEkeywords}
 
 
 \section{Introduction}
@@ -52,19 +52,9 @@ the snake gains + 10 score and grows an additional body part of
 1 square in size. If the snake collides with the borders of the grid
 or the head collides with it's own body, the game ends.\label{game-over}
 
-\section{Episode}
-An episode contains all of the actions taken in one game
-of the snake. The episode ends when a terminal state is
-reached (game ends), described in section \ref{game-over}. In the case of the snake game that is either
-the head of the snake colliding with a border or the head
-colliding with it's own body.
-
-\section{Step}
-A step is the performance of one action from the action space in a given state.
-
-
 
 \section{Q-Learning}
+Q-Learning will be used as the algorithm to train the agent.
 Q-Learning finds the optimal policy by learning
 the best Q values for each state-action pair.
 
@@ -81,14 +71,13 @@ to the optimal function q*.
 The goal is to train an agent that will play the snake game
 with any chosen grid size as best as possible using just Q-Learning.
 Given the attributes of Q-Learning, it should be possible to train
-an agent, that plays the game of snake at a very good level. It
+an agent that plays the game of snake at a very good level. It
 is not expected to be perfect, but it should play as close to it
 as possible.
 
-
 \section{Environment}
 The environment mimics functionality provided by environments in
-OpenAI gyms. This made the process of applying the Q-Learning
+OpenAI gyms \cite{openai}. This made the process of applying the Q-Learning
 algorithm quite simple, as the OpenAI environments are designed
 with reinforcement learning in mind.
 
@@ -101,13 +90,24 @@ The environment provides three actions for the agent to take:
 These values are encoded as integers 0, 1, 2 and aliased as
 constants LEFT, RIGHT and STRAIGHT in the code.
 
-The environment does not provide the full state of the board,
+
+\subsection{State space}
+For this project, the computing resources are somewhat limited and
+as such, these limited resources have to be taken into consideration
+when designing the state and action spaces.
+The state space for a snake game with a variable size would be
+too big, if it were taken as is. That is, because the snake and
+it's body adds many additional states, as the snake can grow it's body to
+be the same size as all of the squares in the grid. Also, the head is distinct
+from the other body parts and would have to be accounted for in all of the states.
+
+The current environment does not provide the full state of the board,
 as there are simply too many states to represent for a grid
 of variable size. Thus, the environment is restricted to
 this basic information:
 \begin{itemize}
     \item Information about danger. It indicates if after taking an action from the action space in the current state
-        the game will be over. This can be expanded for a lookahead of one or more turns in the future.
+        the game will be over. % TODO check - This can be expanded for a lookahead of one or more turns in the future.
     \item Information about food position. The values are left, right, up and down.
     \item Information about the snake's current direction. There are four values: left, right, up and down.
 \end{itemize}
@@ -118,26 +118,18 @@ Thus if the food is left, the array on position left will have the value of 1 (t
 value will be 0 (false). This applies for all positions. In the end, three individual arrays for danger,
 food and direction are created and are returned concatenated as the current state.
 
-\section{Training}
 
-\section{Observations}
-The snake seems to learn better in smaller environments.
+\subsection{Episode}
+An episode contains all of the actions taken in one game
+of the snake. The episode ends when a terminal state is
+reached (game ends), described in section \ref{game-over}.
 
-Even with limited information the snake learns the strategy
-of creating as much space as possible for it's own body.
-This results in the snake hugging the borders as much
-as possible, thus it takes longer paths to get to the reward (food) which
-might seem strange early in the game.
-However, when the snake's body is longer after collecting a
-few rewards, the benefits of this strategy are fully visible.
+\subsection{Step}
+A step is the performance of one action from the action space in a given state.
 
 
-Since the environment is custom, some thought had to be given
-to what kind of rewards the agent should get as well as their
-quantity.
 
-
-\section{Extending the state space}
+\subsection{Extending the state space}
 The most obvious way to extend the state is to add more
 information about danger. For the most basic case, danger
 is supplied as an array of boolean values. From the current
@@ -149,7 +141,27 @@ in the future. This however grows the danger array
 exponentially, so the comparison will be made only between
 one and two future actions lookahead.
 
-\section{Plots}
+
+\section{Training} \label{training}
+The python program supports a training mode, where
+training arguments can be provided. Some of those are the environment size,
+total episodes to train for, decay rate, depth (size of state space),
+learning rate and more.
+
+The best results were observed in agents trained on the 3x3 grid environment.
+
+All agents referenced below have been trained for 500 000 episodes
+with an exponential decay rate with a value of 0.01. Minimum epsilon with value 0.01
+was used to keep some exploration throughout the whole training
+process.
+
+Figure \ref{fig1} contains training statistics for the agent that was trained
+with a limited information about danger. This agent performs well, however
+it is unable to play perfect games very often at all.
+
+
+% time python run.py --train --env_size 3 --o "3-depth.npy" --total_episodes 500000 --decay_rate=0.01 --depth
+% time python run.py --train --env_size 3 --o "3-depth.npy" --total_episodes 500000 --decay_rate=0.01 --depth
 \begin{figure}[!t]
 \centering
 \includegraphics[width=3.5in]{3_fig.png}
@@ -157,37 +169,77 @@ one and two future actions lookahead.
 \label{fig1}
 \end{figure}
 
+Figure \ref{fig2} show statistics for the agent that was trained on a
+state space with information about danger for two turns ahead.
+This agent performed considerably better than the previous agent and
+is almost always able to play a perfect game on a 3x3 grid.
+
 \begin{figure}[!t]
 \centering
 \includegraphics[width=3.5in]{3-depth_fig.png}
 \caption{3x3 environment 20-size state space}
-\label{fig1}
+\label{fig2}
 \end{figure}
 
-\section{State space}
-For this project, the computing resources are somewhat limited and
-as such, these limited resources have to be taken into consideration
-when designing the state and action spaces.
-The state space for a snake game with a variable size would be
-too big, if it were taken as is. That is, because the snake and
-it's body adds many additional states, as the snake can grow it's body to
-be the same size as all of the squares in the grid. Also, the head is distinct
-from the other body parts and would have to be accounted for in all of the states.
 
-The state space is represented as a python dictionary, where the keys are
-the individual state arrays and keys are their indices. This indices are later
-used for indexing the Q table. The indices correspond to each state, and hold
-an array of Q values for each action.
+Both of the mentioned agents are capable of playing games in larger environments with
+reasonable performance. Expectedly, the agent trained on the larger state space continues
+to outperform the other agent.
 
 
-\section{Training}
-Best results were seen when training on a 3x3 grid.
-The training did not take as much time, as fewer moves
-were made on average.
+Another interesting fact that can be observed from the plots is
+the dip in average rewards when new states are explored. This dip
+is more significant for the agent with limited state space.
+
+
+\section{Observations}
+
+\subsection{Learning}
+The agent learns much better in smaller environments as evident from
+the figures in section \ref{training}. One of the reason
+undoubtedly is the amount of moves the agent has to make. In
+smaller environments the number of moves made is much smaller,
+allowing the agent to explore states and learn much quicker.
+Another reason could be the amount of information the agent has
+about the environment. In smaller environments the state space
+looks much more similar to the real state of the game than in
+larger environments.
+
+Even with limited information the snake learns the strategy
+of creating as much space as possible for it's own body.
+This results in the snake hugging the borders as much
+as possible, thus it takes longer paths to get to the reward (food) which
+might seem strange early in the game.
+However, when the snake's body is longer after collecting a
+few rewards, the benefits of this strategy are fully visible.
+
+
+\subsection{Rewards}
+Since the environment is custom, rewards had to be assigned for
+performing certain actions. There are three types of reward
+\begin{itemize}
+    \item Reward for eating food.
+    \item Cost for achieving game over state.
+    \item Survival reward for making a move that did not result
+        in game over.
+\end{itemize}
+
+Survival reward did not seem to make any significant difference.
+Only when it was set too high the agent prefered to just move
+around safely without picking up food.
+
+A lot of experiments were conducted to find the right combination
+of cost and reward. The one that seems to work most reasonably
+is to have the cost to be negative double the amount of the reward.
+
+
 
 \begin{thebibliography}{1}
 \bibitem{szepesvari}
     Csaba Szepesvari - Algorithms for Reinforcement Learning. [online] Available at: \url{https://sites.ualberta.ca/~szepesva/papers/RLAlgsInMDPs.pdf} [Accessed 15 January 2022].
+\bibitem{openai}
+    Open AI Gym. [online] Available at: \url{https://gym.openai.com/} [Accessed 15 January 2022].
+
 
 \end{thebibliography}
 
