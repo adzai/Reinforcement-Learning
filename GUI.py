@@ -13,6 +13,9 @@ line_rect = pygame.Rect(0, SCREEN_WIDTH + 1, SCREEN_WIDTH + SCREEN_WIDTH // 10, 
 
 
 def ai_play(args):
+    if args.env_size > 16 or args.env_size < 3:
+        print("env_size argument must be >=3 and <=16")
+        sys.exit(3)
     x_rect = pygame.Rect(0, width * args.env_size, width * args.env_size, 1)
     y_rect = pygame.Rect(width * args.env_size, 0, 1, width * args.env_size)
     MOVEEVENT = pygame.USEREVENT + 1

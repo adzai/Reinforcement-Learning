@@ -68,7 +68,7 @@ def train(args):
     # plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["max"], label="max rewards")
     plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["moves"], label="average moves")
     plt.plot(aggr_ep_rewards["ep"], aggr_ep_rewards["states"], label="explored states")
-    plt.legend(loc=0)
+    plt.legend(loc=4)
     qtable_save_location = args.output
     print(f"Q table saved to {qtable_save_location}")
     fig_save_location = qtable_save_location.split(".npy")[0] + "_fig.png"
