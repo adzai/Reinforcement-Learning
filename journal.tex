@@ -14,7 +14,7 @@
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \usepackage{balance}
 \begin{document}
-\title{Q-Learning in the snake game}
+\title{Q-learning in the snake game}
 \author{Adam Zaiter}
 
 \maketitle
@@ -30,7 +30,7 @@
 This paper will attempt to implement the Q-learning algorithm
 for a basic game of snake. A hypothesis about the expected learning
 outcome will be established and reviewed after implementing the
-Q-Learing algorithm. The implementation will be done in Python
+Q-learing algorithm. The implementation will be done in Python
 and a custom snake game environment will be created.
 This environment will allow for training of the agent with different
 hyperparameters as well as visualizing a game played by the
@@ -53,9 +53,9 @@ the snake gains + 10 score and grows an additional body part of
 or the head collides with it's own body, the game ends.\label{game-over}
 
 
-\section{Q-Learning}
-Q-Learning will be used as the algorithm to train the agent.
-Q-Learning finds the optimal policy by learning
+\section{Q-learning}
+Q-learning will be used as the algorithm to train the agent.
+It finds the optimal policy by learning
 the best Q values for each state-action pair.
 
 The Q function accepts the current state and an action. It then
@@ -69,17 +69,19 @@ to the optimal function q*.
 
 \section{Hypothesis}
 The goal is to train an agent that will play the snake game
-with any chosen grid size as best as possible using just Q-Learning.
-Given the attributes of Q-Learning, it should be possible to train
+with any chosen grid size as best as possible using just Q-learning.
+Given the attributes of Q-learning, it should be possible to train
 an agent that plays the game of snake at a very good level. It
 is not expected to be perfect, but it should play as close to it
 as possible.
 
 \section{Environment}
 The environment mimics functionality provided by environments in
-OpenAI gyms \cite{openai}. This made the process of applying the Q-Learning
+OpenAI gyms \cite{openai}. This made the process of applying the Q-learning
 algorithm quite simple, as the OpenAI environments are designed
 with reinforcement learning in mind.
+
+\subsection{Action space}
 
 The environment provides three actions for the agent to take:
 \begin{enumerate}
@@ -101,14 +103,12 @@ it's body adds many additional states, as the snake can grow it's body to
 be the same size as all of the squares in the grid. Also, the head is distinct
 from the other body parts and would have to be accounted for in all of the states.
 
-The current environment does not provide the full state of the board,
-as there are simply too many states to represent for a grid
-of variable size. Thus, the environment is restricted to
+For these reasons the current environment does not provide the full state of the board. Thus, the environment is restricted to
 this basic information:
 \begin{itemize}
     \item Information about danger. It indicates if after taking an action from the action space in the current state
-        the game will be over. % TODO check - This can be expanded for a lookahead of one or more turns in the future.
-    \item Information about food position. The values are left, right, up and down.
+        the game will be over.
+    \item Information about food position with respect to the snake's head. The values are left, right, up and down.
     \item Information about the snake's current direction. There are four values: left, right, up and down.
 \end{itemize}
 
@@ -119,27 +119,18 @@ value will be 0 (false). This applies for all positions. In the end, three indiv
 food and direction are created and are returned concatenated as the current state.
 
 
-\subsection{Episode}
-An episode contains all of the actions taken in one game
-of the snake. The episode ends when a terminal state is
-reached (game ends), described in section \ref{game-over}.
-
-\subsection{Step}
-A step is the performance of one action from the action space in a given state.
-
-
-
 \subsection{Extending the state space}
 The most obvious way to extend the state is to add more
 information about danger. For the most basic case, danger
 is supplied as an array of boolean values. From the current
-state, a lookahead is performormed on every action from
+state a lookahead is performed on every action from
 the actions space. If the action would result in a game
 over, danger is set to true for that action. This
 array can be extended to looking ahead more than one action
 in the future. This however grows the danger array
-exponentially, so the comparison will be made only between
-one and two future actions lookahead.
+exponentially, so the comparison in the coming experiments
+will be made only between one and two future actions lookahead
+(11 size state space and 20 size state space respectively).
 
 
 \section{Training} \label{training}
@@ -172,7 +163,8 @@ it is unable to play perfect games very often at all.
 Figure \ref{fig2} show statistics for the agent that was trained on a
 state space with information about danger for two turns ahead.
 This agent performed considerably better than the previous agent and
-is almost always able to play a perfect game on a 3x3 grid.
+is able to play a perfect game quite often on a 3x3 grid and on average outperforming
+the aforementioned agent.
 
 \begin{figure}[!t]
 \centering
@@ -181,15 +173,20 @@ is almost always able to play a perfect game on a 3x3 grid.
 \label{fig2}
 \end{figure}
 
+\begin{figure}[!t]
+\centering
+\includegraphics[width=3.5in]{16_fig.png}
+\caption{16x16 environment 20-size state space}
+\label{fig3}
+\end{figure}
 
-Both of the mentioned agents are capable of playing games in larger environments with
-reasonable performance. Expectedly, the agent trained on the larger state space continues
-to outperform the other agent.
 
+Finally, figure \ref{fig3} shows training of an agent on a 16x16 grid.
+Expectedly, the performance is much worse than the other presented agents.
 
-Another interesting fact that can be observed from the plots is
-the dip in average rewards when new states are explored. This dip
-is more significant for the agent with limited state space.
+Both of the mentioned agents that were trained on a 3x3 grid are capable of playing games in larger environments with
+reasonable performance. The agent trained on the larger state space continues
+to outperform the other agent even in the larger environments.
 
 
 \section{Observations}
@@ -213,6 +210,10 @@ might seem strange early in the game.
 However, when the snake's body is longer after collecting a
 few rewards, the benefits of this strategy are fully visible.
 
+Another interesting fact that can be observed from the training plots is
+the dip in average rewards when new states are explored. This dip
+is more significant for the agent with limited state space.
+
 
 \subsection{Rewards}
 Since the environment is custom, rewards had to be assigned for
@@ -230,8 +231,15 @@ around safely without picking up food.
 
 A lot of experiments were conducted to find the right combination
 of cost and reward. The one that seems to work most reasonably
-is to have the cost to be negative double the amount of the reward.
+is to have the cost to be negative double of the amount of the reward.
 
+\section{Better algorithms for the snake game}
+\begin{itemize}
+    \item Function approximation - deep q learning.
+    \item Hamiltonian cycle.
+\end{itemize}
+
+\section{Conclusion}
 
 
 \begin{thebibliography}{1}
