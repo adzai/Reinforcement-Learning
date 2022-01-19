@@ -85,19 +85,6 @@ for the agent to be trained in, as it's random from turn to turn and game
 to game. Thus, the agent has to learn to generalize for the environment as a whole.
 
 
-\subsection{Snake game implementation}
-The snake game is programmed in python.
-It supports square grids of any size that is $>= 3$.
-The snake starts in the middle of the grid with a head of
-1 square in size and attached
-body with 2 squares in size. There also is food spawned in a random
-square that is not occupied by the snake. The objective for the
-snake is to eat as much food as possible. If the food is eaten,
-the snake gains + 10 score and grows an additional body part of
-1 square in size. If the snake collides with the borders of the grid
-or the head collides with it's own body, the game ends.\label{game-over}
-
-
 \section{Hypothesis}\label{hyp}
 The goal is to train an agent that will play the snake game
 with any chosen grid size as best as possible using just Q-learning.
@@ -111,6 +98,20 @@ The environment mimics functionality provided by environments in
 OpenAI gyms \cite{openai}. This made the process of applying the Q-learning
 algorithm quite simple, as the OpenAI environments are designed
 with reinforcement learning in mind.
+
+\subsection{Snake game implementation}
+The snake game is programmed in python.
+It supports square grids of any size that is $>= 3$.
+The snake starts in the middle of the grid with a head of
+1 square in size and attached
+body with 2 squares in size. There also is food spawned in a random
+square that is not occupied by the snake. The objective for the
+snake is to eat as much food as possible. If the food is eaten,
+the snake gains + 10 score and grows an additional body part of
+1 square in size. If the snake collides with the borders of the grid
+or the head collides with it's own body, the game ends.\label{game-over}
+
+
 
 \subsection{Action space}
 
