@@ -20,6 +20,16 @@
 \maketitle
 
 \begin{abstract}
+The goal of this paper is to train an AI agent to solve the classical snake game.
+The Q-learning algorithm was used to train that agent, however
+problems with the state space arised. A possible solution by using a fixed size
+state space was presented
+and tested.
+
+Experiments showed that training an agent using this approach worked better on smaller
+environments. This agent was also able to play in environments of much bigger sizes than
+those it was trained on, but the agent was not able to play perfect games in those environments.
+
 \end{abstract}
 
 % \begin{IEEEkeywords}
@@ -30,7 +40,7 @@
 This paper will attempt to implement the Q-learning algorithm
 for a basic game of snake. A hypothesis about the expected learning
 outcome will be established and reviewed after implementing the
-Q-learing algorithm. The implementation will be done in Python
+Q-learning algorithm. The implementation will be done in Python
 and a custom snake game environment will be created.
 This environment will allow for training of the agent with different
 hyperparameters as well as visualizing a game played by the
@@ -40,7 +50,42 @@ trained agent.
 Basic knowledge of reinforcement learning is assumed, as this paper
 is implementing concepts from the Szepesvari paper \cite{szepesvari}.
 
-\section{Snake game}
+\section{Q-learning}\label{q}
+Q-learning is the algorithm that will be explored in this paper.
+It will be used to train an agent that will be able to maximize
+the reward for it's environment.
+
+
+Q-learning finds the optimal policy by learning
+the best Q values for each state-action pair.
+
+The Q function accepts the current state and an action. It then
+returns the expected reward for taking said action for the given
+state.
+
+The agent then plays episodes. For each step in the episode
+the Q values in the Q table are updated using the Bellman
+equation. This process goes on until the q function converges
+to the optimal function q*.
+
+
+\section{Reinforcement learning problems}
+With the algorithm to train the agent established, let us
+discuss the environment it will be placed in.
+Reinforcement learning is suitable for solving games, thus
+many games were considered as potential candidates.
+
+One of the more interesting ones is the classical snake game \cite{snake}.
+This game is played on a grid, where a food item is randomly
+spawned on one of the tiles along with a snake, controlled
+by a player. The player's objective is to navigate the snake to collect
+as much food as possible. After collecting food, another is randomly spawned
+in one of the available tiles. This offers an interesting environment
+for the agent to be trained in, as it's random from turn to turn and game
+to game. Thus, the agent has to learn to generalize for the environment as a whole.
+
+
+\subsection{Snake game implementation}
 The snake game is programmed in python.
 It supports square grids of any size that is $>= 3$.
 The snake starts in the middle of the grid with a head of
@@ -53,21 +98,7 @@ the snake gains + 10 score and grows an additional body part of
 or the head collides with it's own body, the game ends.\label{game-over}
 
 
-\section{Q-learning}
-Q-learning will be used as the algorithm to train the agent.
-It finds the optimal policy by learning
-the best Q values for each state-action pair.
-
-The Q function accepts the current state and an action. It then
-returns the expected reward for taking said action for the given
-state.
-
-The agent then plays episodes. For each step in the episode
-the Q values in the Q table are updated using the Bellman
-equation. This process goes on until the q function converges
-to the optimal function q*.
-
-\section{Hypothesis}
+\section{Hypothesis}\label{hyp}
 The goal is to train an agent that will play the snake game
 with any chosen grid size as best as possible using just Q-learning.
 Given the attributes of Q-learning, it should be possible to train
@@ -112,12 +143,18 @@ this basic information:
     \item Information about the snake's current direction. There are four values: left, right, up and down.
 \end{itemize}
 
-After gathering this information, it is encoded in a 2D array. For example, the array for food position
+After gathering this information, it is encoded in a 1D array. For example, the array for food position
 is an array of four values. Each position of the array corresponds to a value (left, right, up, down).
 Thus if the food is left, the array on position left will have the value of 1 (true). Otherwise, the
 value will be 0 (false). This applies for all positions. In the end, three individual arrays for danger,
 food and direction are created and are returned concatenated as the current state.
 
+
+This approach will have worse results for small environments than a full encoding of the grid, as it provides
+much less information to the agent. However, one of the criteria in the hypothesis (\ref{hyp}) is for the
+agent to play on grids of variable sizes. While encoding the whole environment for a 100x100 grid is
+simply infeasible, the approach described above has constant space size for any given grid and thus can still
+be used.
 
 \subsection{Extending the state space}
 The most obvious way to extend the state is to add more
@@ -189,7 +226,7 @@ reasonable performance. The agent trained on the larger state space continues
 to outperform the other agent even in the larger environments.
 
 
-\section{Observations}
+\section{Results}
 
 \subsection{Learning}
 The agent learns much better in smaller environments as evident from
@@ -233,22 +270,43 @@ A lot of experiments were conducted to find the right combination
 of cost and reward. The one that seems to work most reasonably
 is to have the cost to be negative double of the amount of the reward.
 
-\section{Better algorithms for the snake game}
-\begin{itemize}
-    \item Function approximation - deep q learning.
-    \item Hamiltonian cycle.
-\end{itemize}
+\section{Further work}
+\subsection{Deep Q-learning}
+To solve some problems stemming from large state spaces as described earlier in
+the paper, deep Q-learning can be used. When value iteration becomes
+inefficent due to large state spaces, function approximation can be used
+to estimate the optimal Q function \ref{szepesvari}. Deep neural networks
+are great candidates for this approximation.
+
+\subsection{Hamiltonian cycle}
+A hamiltonian cycle visits every vertex in a graph exactly once.
+The path starts and ends in the same vertex.
+If the grid of the environment would be of even width or height,
+a hamiltonian cycle would exist for that graph \cite{cycle} and it could be
+used as the path for the snake. This way, it would be guaranteed
+to collect the food and not collide with it's own body or a border
+at any time.
 
 \section{Conclusion}
-
+The Q-learning algorithm was implemented and used in a snake game
+environment. Issues of the environment's state space were discussed
+and a solution was proposed. It was then tested on multiple agents
+trained in different environments. It was found, that the agent
+learned better in smaller environments. Furthermore, the agent
+with extended state space outperformed the other agents.
+It was established via the experiments, that an agent that could play a perfect
+game on any grid size could not be created with the proposed methods.
+Thus, further work for improving performance in the snake game environment was discussed.
 
 \begin{thebibliography}{1}
+\bibitem{snake}
+    Snake (video game genre) \url{https://en.wikipedia.org/wiki/Snake_(video_game_genre)} [Accessed 18 January 2022].
 \bibitem{szepesvari}
     Csaba Szepesvari - Algorithms for Reinforcement Learning. [online] Available at: \url{https://sites.ualberta.ca/~szepesva/papers/RLAlgsInMDPs.pdf} [Accessed 15 January 2022].
 \bibitem{openai}
     Open AI Gym. [online] Available at: \url{https://gym.openai.com/} [Accessed 15 January 2022].
-
-
+\bibitem{cycle}
+Itai, Alon \& Papadimitriou, Christos \& Szwarcfiter, Jayme. (1982). Hamilton Paths in Grid Graphs. SIAM J. Comput.. 11. 676-686. 10.1137/0211056.
 \end{thebibliography}
 
 
