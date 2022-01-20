@@ -271,6 +271,27 @@ A lot of experiments were conducted to find the right combination
 of cost and reward. The one that seems to work most reasonably
 is to have the cost to be negative double of the amount of the reward.
 
+\subsection{Hyperparameters}
+The importance of hyperparameters was tested empirically through
+training the agent with various values.
+The hyperparameters available were:
+\begin{itemize}
+    \item Learning rate $\alpha$.
+    \item Future reward discount $\gamma$.
+    \item Exploration/exploitation $\epsilon$.
+    \item $\epsilon$ decay rate.
+\end{itemize}
+
+The values that gave the best results for $\alpha$ were around 0.75, for $\gamma$ around 0.9. However, changing these values did not
+have as much effect as manipulating $\epsilon$ and it's decay rate.
+
+First of all, exponential decay rate proved to be slightly better.
+Then, the seemingly best strategy was to explore quickly at the
+beginning and then let the agent learn the Q values. Still, a
+minimum $\epsilon$ value of 0.01 was kept to have at least
+a small element of exploration still present even later in
+the training.
+
 \section{Further work}
 \subsection{Deep Q-learning}
 To solve some problems stemming from large state spaces as described earlier in
@@ -298,6 +319,8 @@ with extended state space outperformed the other agents.
 It was established via the experiments, that an agent that could play a perfect
 game on any grid size could not be created with the proposed methods.
 Thus, further work for improving performance in the snake game environment was discussed.
+
+The code for the project can be found at \url{https://github.com/adzai/Reinforcement-Learning}.
 
 \begin{thebibliography}{1}
 \bibitem{snake}
