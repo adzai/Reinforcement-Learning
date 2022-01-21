@@ -1,5 +1,10 @@
 # Reinforcement Learning on a Snake Game
 
+This is an implementation of the Q-learning algorithm for
+training an agent to play the classic snake game.
+
+More information can be found in the accompanying [article](https://github.com/adzai/Reinforcement-Learning/blob/main/journal.pdf)
+
 ## Install
 `git clone https://github.com/adzai/Reinforcement-Learning.git`
 
@@ -59,16 +64,19 @@ python run.py --train --env_size 3 --o "3-depth.npy" --total_episodes 500000 --d
 ```
 
 ## Visualization
+
+![snake](https://user-images.githubusercontent.com/39188731/150514544-ef8c69b5-9333-4145-a213-c1894193b1ed.png)
+
 **Trained on standard state space**
 ```
 python run.py --play --env_size 3 --q_table Q_tables/3.npy
 ```
 **Trained on extended state space**
 ```
-python run.py --play --env_size 3 --q_table Q_tables/3.npy --depth
+python run.py --play --env_size 3 --q_table Q_tables/3-depth.npy --depth
 ```
 
 You can also try a differently sized environment (up to 16x16)
 ```
-python run.py --play --env_size 16 --q_table Q_tables/3.npy --depth
+python run.py --play --env_size 16 --q_table Q_tables/3-depth.npy --depth
 ```
