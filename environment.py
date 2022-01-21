@@ -29,7 +29,6 @@ class Environment:
         self.spawn_food()
 
     def reset(self):
-        # self.__init__(self.grid_size)
         self.observation_arr = tuple([0]) * self.state_size
         self.grid = [
             [SQUARE_TYPE.empty for _ in range(self.grid_size)]
@@ -119,11 +118,9 @@ class Environment:
         )
         new_head = Coordinates(new_x, new_y)
         if self.is_game_over(new_y, new_x):
-            # print("Hit wall")
             self.is_over = True
             return
         if self.snake.ate_itself():
-            # print("Ate itself")
             self.is_over = True
             return
         self.snake = self.update_snake(new_head, self.snake)
